@@ -111,8 +111,9 @@ c10 = circle 100.0 # fc green
 w10 = circle 100.0
 
 svgVis :: Board -> Cell -> Diagram SVG
-svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-10 .. y+10]]
-    where line y = foldr1 (|||) [translateX (fromIntegral dx) (case board (C (x+dx) y) of Living -> c10; _ -> w10) | dx <- [-10 .. 10]]
+svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-window .. y+window]]
+    where line y = foldr1 (|||) [translateX (fromIntegral dx) (case board (C (x+dx) y) of Living -> c10; _ -> w10) | dx <- [-window .. window]]
+          window = 5
 
 --main = defaultMain (circle 100.0 # fc green :: Diagram SVG)
 --main = defaultMain $ svgVis glider middle
@@ -141,6 +142,3 @@ main = do
  where serveAPI :: Server LifeAPI
        serveAPI = serveSVG
         where serveSVG steps = return (Dia (svgVis ((iterate step glider !! steps) ) middle))
-
---renderSVG (opts^.output) szSpec d
---renderSVG :: 
