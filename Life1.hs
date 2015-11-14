@@ -44,10 +44,10 @@ memoed b = \c -> unsafePerformIO $
               do m <- readIORef mapRef
                  let found = M.lookup c m
                  case found of
-                   Nothing -> let new = b c in writeIORef mapRef (M.insert c new m) >> print (c, new) >> pure new
-                   (Just old) -> print ("FOUND", c, old) >> pure old
+                   Nothing -> let new = b c in writeIORef mapRef (M.insert c new m) >> pure new
+                   (Just old) -> pure old
    where mapRef :: IORef (M.Map Cell Liveness)
-         mapRef = unsafePerformIO $ print "empty" >> newIORef M.empty
+         mapRef = unsafePerformIO $ newIORef M.empty
 
 go :: Direction -> Cell -> Cell
 go N (C x y) = C x (y+1)
@@ -134,7 +134,7 @@ svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-window .. y+wind
 
 --instance HasServer (QDiagram SVG V2 Double Data.Monoid.Any)
 
-type LifeAPI = "glider" :> Capture "steps" Int :> Get '[HTML] DiagramSVG
+type LifeAPI = "glider" :> Capture "steps" Int :> Capture "x" Integer :> Capture "y" Integer :> Get '[HTML] DiagramSVG
 newtype DiagramSVG = Dia (Diagram SVG)
 
 instance ToHtml DiagramSVG where
@@ -152,4 +152,4 @@ main = do
   
  where serveAPI :: Server LifeAPI
        serveAPI = serveSVG
-        where serveSVG steps = return (Dia (svgVis ((iterate step glider !! steps) ) middle))
+        where serveSVG steps x y = return (Dia (svgVis ((iterate (memoed . step) glider !! steps) ) (C x y)))
