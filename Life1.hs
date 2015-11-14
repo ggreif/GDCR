@@ -1,4 +1,4 @@
-{-# LANGUAGE ParallelListComp, TypeSynonymInstances, FlexibleInstances, DataKinds, TypeOperators #-}
+{-# LANGUAGE DataKinds, TypeOperators #-}
 
 import Test.QuickCheck hiding ((===))
 import Diagrams.Backend.SVG
