@@ -1,9 +1,18 @@
-{-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE ParallelListComp, TypeSynonymInstances, FlexibleInstances, DataKinds, TypeOperators #-}
 
 import Test.QuickCheck hiding ((===))
+import Diagrams.Backend.SVG
 import Diagrams.Backend.SVG.CmdLine
+import Diagrams.Core.Compile
 import Diagrams hiding (Direction)
+import Data.Monoid
 import Data.Colour.Names
+import Network.Wai.Handler.Warp
+import Servant
+import Servant.HTML.Lucid
+import Lucid.Base
+
+import System.IO.Unsafe
 
 data Cell = C Integer Integer deriving Show
 data Liveness = Dead | Living deriving (Eq, Show)
@@ -106,4 +115,32 @@ svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-10 .. y+10]]
     where line y = foldr1 (|||) [translateX (fromIntegral dx) (case board (C (x+dx) y) of Living -> c10; _ -> w10) | dx <- [-10 .. 10]]
 
 --main = defaultMain (circle 100.0 # fc green :: Diagram SVG)
-main = defaultMain $ svgVis glider middle
+--main = defaultMain $ svgVis glider middle
+
+
+--instance HasServer (QDiagram SVG V2 Double Data.Monoid.Any)
+
+type LifeAPI = "glider" :> Capture "steps" Int :> Get '[HTML] DiagramSVG
+             -- :<|> "hey" :> Get '[HTML] String
+newtype DiagramSVG = Dia (Diagram SVG)
+
+instance ToHtml DiagramSVG where
+  toHtml = toHtmlRaw
+  toHtmlRaw (Dia d) = --toHtml "hhH"
+                 toHtmlRaw $ unsafePerformIO $
+
+         do let spec = fromIntegral <$> mkSizeSpec2D Nothing Nothing
+            renderSVG "bild.svg" spec d
+            readFile "bild.svg"
+
+main :: IO ()
+main = do
+  putStrLn "start serving"
+  run 8080 (serve (Proxy :: Proxy LifeAPI) serveAPI)
+  
+ where serveAPI :: Server LifeAPI
+       serveAPI = serveSVG
+        where serveSVG steps = return (Dia (svgVis ((iterate step glider !! steps) ) middle))
+
+--renderSVG (opts^.output) szSpec d
+--renderSVG :: 
