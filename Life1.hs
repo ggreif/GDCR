@@ -11,10 +11,12 @@ import Network.Wai.Handler.Warp
 import Servant
 import Servant.HTML.Lucid
 import Lucid.Base
+import qualified Data.Map as M
 
 import System.IO.Unsafe
+import Data.IORef
 
-data Cell = C Integer Integer deriving Show
+data Cell = C Integer Integer deriving (Ord, Eq, Show)
 data Liveness = Dead | Living deriving (Eq, Show)
 
 data Direction = N | E | S | W | NE | SE | NW | SW deriving (Enum, Show)
@@ -35,6 +37,17 @@ step board cell = case (mid, length (filter living neighbours)) of
 living :: Liveness -> Bool
 living Living = True
 living _ = False
+
+
+memoed :: Board -> Board
+memoed b = \c -> unsafePerformIO $
+              do m <- readIORef mapRef
+                 let found = M.lookup c m
+                 case found of
+                   Nothing -> let new = b c in writeIORef mapRef (M.insert c new m) >> print (c, new) >> pure new
+                   (Just old) -> print ("FOUND", c, old) >> pure old
+   where mapRef :: IORef (M.Map Cell Liveness)
+         mapRef = unsafePerformIO $ print "empty" >> newIORef M.empty
 
 go :: Direction -> Cell -> Cell
 go N (C x y) = C x (y+1)
@@ -105,7 +118,7 @@ visM b c = mapM_ putStrLn (vis b c)
 
 anim b = mapM_ (\b -> visM b middle >> putStrLn "-------------") (take 5 $ iterate step b)
 
-prop_glider x y = (iterate step glider !! 4) (C (x+1) (y-1)) == glider (C x y)
+prop_glider x y = (iterate (memoed . step) glider !! 4) (C (x+1) (y-1)) == glider (C x y)
 
 c10 = circle 100.0 # fc green
 w10 = circle 100.0
