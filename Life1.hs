@@ -122,13 +122,11 @@ svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-window .. y+wind
 --instance HasServer (QDiagram SVG V2 Double Data.Monoid.Any)
 
 type LifeAPI = "glider" :> Capture "steps" Int :> Get '[HTML] DiagramSVG
-             -- :<|> "hey" :> Get '[HTML] String
 newtype DiagramSVG = Dia (Diagram SVG)
 
 instance ToHtml DiagramSVG where
   toHtml = toHtmlRaw
-  toHtmlRaw (Dia d) = --toHtml "hhH"
-                 toHtmlRaw $ unsafePerformIO $
+  toHtmlRaw (Dia d) = toHtmlRaw $ unsafePerformIO $
 
          do let spec = fromIntegral <$> mkSizeSpec2D Nothing Nothing
             renderSVG "bild.svg" spec d
