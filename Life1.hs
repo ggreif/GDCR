@@ -5,7 +5,6 @@ import Diagrams.Backend.SVG
 import Diagrams.Backend.SVG.CmdLine
 import Diagrams.Core.Compile
 import Diagrams hiding (Direction)
-import Data.Monoid
 import Data.Colour.Names
 import Network.Wai.Handler.Warp
 import Servant
@@ -42,8 +41,7 @@ living _ = False
 memoed :: Board -> Board
 memoed b = \c -> unsafePerformIO $
               do m <- readIORef mapRef
-                 let found = M.lookup c m
-                 case found of
+                 case M.lookup c m of
                    Nothing -> let new = b c in writeIORef mapRef (M.insert c new m) >> pure new
                    (Just old) -> pure old
    where mapRef :: IORef (M.Map Cell Liveness)
@@ -105,15 +103,12 @@ glider (C (-1) (-1))  = Living
 glider _ = Dead
 
 
---vis board (C x y) = [case board (C x' y') of Living -> '@'; _ -> ' ' | x' <- [x-5 .. x+5] | y' <- [y-5 .. y+5]]
-
 vis board (C x y) = cut 11 [case board (C x' y') of Living -> '@'; _ -> ' ' | y' <- reverse [y-5 .. y+5], x' <- [x-5 .. x+5]]
 
 cut :: Int -> String -> [String]
 cut n [] = []
 cut n l = take n l : cut n (drop n l)
 
---visM :: [String] -> IO ()
 visM b c = mapM_ putStrLn (vis b c)
 
 anim b = mapM_ (\b -> visM b middle >> putStrLn "-------------") (take 5 $ iterate step b)
@@ -128,19 +123,12 @@ svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-window .. y+wind
     where line y = foldr1 (|||) [translateX (fromIntegral dx) (case board (C (x+dx) y) of Living -> c10; _ -> w10) | dx <- [-window .. window]]
           window = 5
 
---main = defaultMain (circle 100.0 # fc green :: Diagram SVG)
---main = defaultMain $ svgVis glider middle
-
-
---instance HasServer (QDiagram SVG V2 Double Data.Monoid.Any)
-
 type LifeAPI = "glider" :> Capture "steps" Int :> Capture "x" Integer :> Capture "y" Integer :> Get '[HTML] DiagramSVG
 newtype DiagramSVG = Dia (Diagram SVG)
 
 instance ToHtml DiagramSVG where
   toHtml = toHtmlRaw
   toHtmlRaw (Dia d) = toHtmlRaw $ unsafePerformIO $
-
          do let spec = fromIntegral <$> mkSizeSpec2D Nothing Nothing
             renderSVG "bild.svg" spec d
             readFile "bild.svg"
