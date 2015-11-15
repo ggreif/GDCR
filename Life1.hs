@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, TypeOperators #-}
+{-# LANGUAGE DataKinds, TypeOperators, ScopedTypeVariables #-}
 
 import Test.QuickCheck hiding ((===))
 import Diagrams.Backend.SVG
@@ -9,10 +9,10 @@ import Network.Wai.Handler.Warp
 import Servant
 import Servant.HTML.Lucid
 import Lucid.Base
+import Data.Functor.Identity
 import Data.Text (pack)
 import qualified Data.Map as M
 
-import Unsafe.Coerce (unsafeCoerce)
 import System.IO.Unsafe
 import Data.IORef
 
@@ -129,12 +129,10 @@ newtype DiagramSVG = Dia (Diagram SVG)
 
 instance ToHtml DiagramSVG where
   toHtml = toHtmlRaw
-  toHtmlRaw (Dia d) =  unsafeCoerce (renderDia SVG opts d)
-  {-toHtmlRaw $ unsafePerformIO $
-         do let spec = fromIntegral <$> mkSizeSpec2D Nothing Nothing
-            renderSVG "bild.svg" spec d
-            readFile "bild.svg"-}
-     where opts = (SVGOptions (mkWidth 250) Nothing (pack ""))
+  toHtmlRaw (Dia d) = gener (renderDia SVG opts d)
+     where opts = (SVGOptions (mkWidth 250) Nothing (pack "") [] False)
+           gener :: forall m . Monad m => HtmlT Identity () -> HtmlT m ()
+           gener = HtmlT . (pure :: a -> m a) . runIdentity . runHtmlT
 
 main :: IO ()
 main = do
