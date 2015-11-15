@@ -3,7 +3,6 @@
 import Test.QuickCheck hiding ((===))
 import Diagrams.Backend.SVG
 import Diagrams.Backend.SVG.CmdLine
-import Diagrams.Core.Compile
 import Diagrams hiding (Direction)
 import Data.Colour.Names
 import Network.Wai.Handler.Warp
@@ -33,9 +32,9 @@ step board cell = case (mid, length (filter living neighbours)) of
                      _ -> Dead
   where neighbours = [board (go d cell) | d <- [N .. SW]]
         mid = board cell
-living :: Liveness -> Bool
-living Living = True
-living _ = False
+        living :: Liveness -> Bool
+        living Living = True
+        living _ = False
 
 
 memoed :: Board -> Board
@@ -140,4 +139,4 @@ main = do
   
  where serveAPI :: Server LifeAPI
        serveAPI = serveSVG
-        where serveSVG steps x y = return (Dia (svgVis ((iterate (memoed . step) glider !! steps) ) (C x y)))
+       serveSVG steps x y = return (Dia (svgVis ((iterate (memoed . step) glider !! steps) ) (C x y)))
