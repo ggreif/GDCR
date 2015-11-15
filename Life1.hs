@@ -129,10 +129,10 @@ newtype DiagramSVG = Dia (Diagram SVG)
 
 instance ToHtml DiagramSVG where
   toHtml = toHtmlRaw
-  toHtmlRaw (Dia d) = gener (renderDia SVG opts d)
+  toHtmlRaw (Dia d) = generalise (renderDia SVG opts d)
      where opts = (SVGOptions (mkWidth 250) Nothing (pack "") [] False)
-           gener :: forall m . Monad m => HtmlT Identity () -> HtmlT m ()
-           gener = HtmlT . (pure :: a -> m a) . runIdentity . runHtmlT
+           generalise :: forall m . Applicative m => HtmlT Identity () -> HtmlT m ()
+           generalise = HtmlT . (pure :: a -> m a) . runIdentity . runHtmlT
 
 main :: IO ()
 main = do
