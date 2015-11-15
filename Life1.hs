@@ -2,7 +2,6 @@
 
 import Test.QuickCheck hiding ((===))
 import Diagrams.Backend.SVG
-import Diagrams.Backend.SVG.CmdLine
 import Diagrams hiding (Direction)
 import Data.Colour.Names
 import Network.Wai.Handler.Warp
