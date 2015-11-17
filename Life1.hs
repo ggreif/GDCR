@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, TypeOperators, ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds, TypeOperators #-}
 
 import Test.QuickCheck hiding ((===))
 import Diagrams.Backend.SVG
@@ -20,16 +20,12 @@ data Liveness = Dead | Living deriving (Eq, Show)
 
 data Direction = N | E | S | W | NE | SE | NW | SW deriving (Enum, Show)
 
-
-data List a = Nil | a `Const` List a
-
 type Board = Cell -> Liveness
 
 step :: Board -> Board
 step board cell = case (mid, length (filter living neighbours)) of
-                     (_, l) | l < 2 -> Dead
                      (Living, l) | l == 2 || l == 3 -> Living
-                     (Dead, l) | l == 3 -> Living
+                     (Dead, 3) -> Living
                      _ -> Dead
   where neighbours = [board (go d cell) | d <- [N .. SW]]
         mid = board cell
@@ -123,15 +119,23 @@ svgVis board (C x y) = foldr1 (===) [line y' | y' <- reverse [y-window .. y+wind
     where line y = foldr1 (|||) [translateX (fromIntegral dx) (case board (C (x+dx) y) of Living -> c10; _ -> w10) | dx <- [-window .. window]]
           window = 5
 
-type LifeAPI = "glider" :> Capture "steps" Int :> Capture "x" Integer :> Capture "y" Integer :> Get '[HTML] DiagramSVG
+type LifeAPI = "glider" :> Capture "steps" Int
+                        :> Capture "x" Integer
+                        :> Capture "y" Integer :> Get '[HTML] DiagramSVG
+           :<|> "chequered" :> Capture "steps" Int :> Get '[HTML] DiagramSVG
+           :<|> "prime" :> Capture "prime" Integer :> Capture "steps" Int :> Get '[HTML] DiagramSVG
+           :<|> "stripe" :> Capture "stripes" Integer :> Capture "steps" Int :> Get '[HTML] DiagramSVG
+           :<|> "gcd" :> Capture "n" Integer :> Capture "steps" Int :> Get '[HTML] DiagramSVG
+
+
 newtype DiagramSVG = Dia (Diagram SVG)
 
 instance ToHtml DiagramSVG where
   toHtml = toHtmlRaw
-  toHtmlRaw (Dia d) = generalise (renderDia SVG opts d)
+  toHtmlRaw (Dia d) = relaxHtmlT (renderDia SVG opts d)
      where opts = (SVGOptions (mkWidth 250) Nothing (pack "") [] False)
-           generalise :: forall m . Applicative m => HtmlT Identity () -> HtmlT m ()
-           generalise = HtmlT . (pure :: a -> m a) . runIdentity . runHtmlT
+           --generalise :: forall m . Applicative m => HtmlT Identity () -> HtmlT m ()
+           --generalise = HtmlT . (pure :: a -> m a) . runIdentity . runHtmlT
 
 main :: IO ()
 main = do
@@ -139,5 +143,14 @@ main = do
   run 8080 (serve (Proxy :: Proxy LifeAPI) serveAPI)
   
  where serveAPI :: Server LifeAPI
-       serveAPI = serveSVG
-       serveSVG steps x y = return (Dia (svgVis ((iterate (memoed . step) glider !! steps) ) (C x y)))
+       serveAPI = serveGlider :<|> serveChequered :<|> servePrime :<|> serveStripe :<|> serveGcd
+       serveGlider steps x y = return (Dia (svgVis ((iterate (memoed . step) glider !! steps) ) (C x y)))
+       serveChequered steps = return (Dia (svgVis ((iterate (memoed . step) chequered !! steps) ) middle))
+       servePrime p steps = return (Dia (svgVis ((iterate (memoed . step) (prime p) !! steps) ) middle))
+       serveStripe p steps = return (Dia (svgVis ((iterate (memoed . step) (prime p) !! steps) ) middle))
+       serveGcd n = serveMiddle $ gcdB n
+       serveMiddle board steps = return (Dia (svgVis ((iterate (memoed . step) board !! steps) ) middle))
+       chequered (C x y) = case even $ x + y of True -> Living; _ -> Dead
+       prime p (C x y) = case (x + y) `rem` p == 0 of True -> Living; _ -> Dead
+       stripe p (C x y) = case (x + y) `div` p == 0 of True -> Living; _ -> Dead
+       gcdB n (C x y) = case x `gcd` y == n of True -> Living; _ -> Dead
