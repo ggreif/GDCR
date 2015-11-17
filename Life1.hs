@@ -11,6 +11,7 @@ import Lucid.Base
 import Data.Functor.Identity
 import Data.Text (pack)
 import qualified Data.Map as M
+import qualified Data.Set as S
 
 import System.IO.Unsafe
 import Data.IORef
@@ -42,6 +43,16 @@ memoed b = \c -> unsafePerformIO $
                    (Just old) -> pure old
    where mapRef :: IORef (M.Map Cell Liveness)
          mapRef = unsafePerformIO $ newIORef M.empty
+
+
+-- given two cells spanning a rectangle and a cell,
+-- return the resultant rectangle and a function that extends the set
+extendRect (C l t) br p@(C x y) | x < l = extendVert (C x t) br p [x .. l-1]
+extendRect tl (C r b) p@(C x y) | x > r = extendVert tl (C x b) p [r+1 .. x]
+extendRect tl br p = extendVert tl br p []
+
+extendVert (C l t) br p@(C _ y) h | y > t = ((C l y), br)
+extendVert tl (C r b) (C _ y) h | y < b = (tl , (C r y))
 
 go :: Direction -> Cell -> Cell
 go N (C x y) = C x (y+1)
