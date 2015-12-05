@@ -47,12 +47,21 @@ memoed b = \c -> unsafePerformIO $
 
 -- given two cells spanning a rectangle and a cell,
 -- return the resultant rectangle and a function that extends the set
+extendRect :: Cell -> Cell -> Cell -> ((Cell, Cell), [Cell])
 extendRect (C l t) br p@(C x y) | x < l = extendVert (C x t) br p [x .. l-1]
 extendRect tl (C r b) p@(C x y) | x > r = extendVert tl (C x b) p [r+1 .. x]
 extendRect tl br p = extendVert tl br p []
 
-extendVert (C l t) br p@(C _ y) h | y > t = ((C l y), br)
-extendVert tl (C r b) (C _ y) h | y < b = (tl , (C r y))
+-- given the rectangle and the point and a horizontal range
+-- figure out the upto two rectangles that need to be recomputed
+--
+extendVert :: Cell -> Cell -> Cell -> [Integer] -> ((Cell, Cell), [Cell])
+extendVert (C l t) br@(C r b) p@(C _ y) h | y > t = (((C l y), br), [C i j | i <- h, j <- [b .. y]]
+                                                                 ++ [C i j | i <- [l .. r], j <- [t+1 .. y]])
+extendVert tl@(C l t) (C r b) (C _ y) h | y < b = ((tl , (C r y)), [C i j | i <- h, j <- [y .. t]]
+                                                                ++ [C i j | i <- [l .. r], j <- [y .. b-1]])
+extendVert tl@(C _ t) br@(C _ b) _ h = ((tl , br), [C i j | i <- h, j <- [b .. t]])
+
 
 go :: Direction -> Cell -> Cell
 go N (C x y) = C x (y+1)
